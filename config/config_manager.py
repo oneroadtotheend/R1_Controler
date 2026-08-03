@@ -12,8 +12,24 @@ from pathlib import Path
 class ConfigManager:
     """配置管理器"""
 
+    @staticmethod
+    def _resolve_config_dir():
+        """解析配置目录：APK 运行时源码目录可能只读，改写到可写的应用私有目录。"""
+        android_arg = os.environ.get('ANDROID_ARGUMENT')
+        if android_arg:
+            # ANDROID_ARGUMENT 为 APK 内 main.py 的绝对路径，其所在目录可写
+            base = os.path.dirname(android_arg)  # .../files/app
+            cfg = os.path.join(base, ".r1config")
+            try:
+                os.makedirs(cfg, exist_ok=True)
+            except Exception:
+                pass
+            return Path(cfg)
+        # PC / 开发模式：就用源码内的 config 目录
+        return Path(__file__).parent
+
     def __init__(self):
-        self.config_dir = Path(__file__).parent
+        self.config_dir = self._resolve_config_dir()
         self.config_file = self.config_dir / "settings.json"
 
         # 默认配置
