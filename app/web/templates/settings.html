@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置 - 斐讯R1控制中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background: #f5f5f5; }
+        .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%); color: white; padding: 20px 0; }
+        .sidebar .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar .nav-link { padding: 12px 20px; color: rgba(255,255,255,0.8); border-left: 3px solid transparent; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.1); color: white; border-left-color: white; }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; }
+        .main-content { margin-left: 220px; padding: 20px; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <h4>🎵 斐讯R1控制</h4>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="/"><i class="bi bi-house"></i> 首页</a>
+            <a class="nav-link active" href="/settings"><i class="bi bi-gear"></i> 设置</a>
+            <a class="nav-link" href="/music"><i class="bi bi-music-player"></i> 音乐</a>
+            <a class="nav-link" href="/ha"><i class="bi bi-house-door"></i> 智能家居</a>
+            <a class="nav-link" href="/chat"><i class="bi bi-chat-dots"></i> AI对话</a>
+            <a class="nav-link" href="/voice"><i class="bi bi-mic"></i> 语音控制</a>
+            <a class="nav-link" href="/monitor"><i class="bi bi-shield-check"></i> 服务监控</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <h4 class="mb-4">⚙️ 系统设置</h4>
+
+        <!-- 大模型配置 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-robot"></i> 🤖 大模型配置
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">API地址</label>
+                        <input type="text" class="form-control" id="llmUrl" placeholder="https://api.openai.com/v1">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">API Key</label>
+                        <input type="password" class="form-control" id="llmKey" placeholder="sk-...">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">模型</label>
+                        <input class="form-select" list="modelOptions" id="llmModel" placeholder="输入或选择模型名称">
+                        <datalist id="modelOptions">
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                            <option value="claude-3-opus">Claude 3 Opus</option>
+                            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                            <option value="claude-3-haiku">Claude 3 Haiku</option>
+                            <option value="gemini-pro">Gemini Pro</option>
+                            <option value="moonshot-v1-8k">月之暗面 Moonshot</option>
+                            <option value="qwen-turbo">阿里 Qwen Turbo</option>
+                            <option value="qwen-plus">阿里 Qwen Plus</option>
+                            <option value="ernie-bot">百度文心一言</option>
+                        </datalist>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Temperature</label>
+                        <input type="range" class="form-range" min="0" max="2" step="0.1" id="llmTemp" value="0.7">
+                        <small class="text-muted">值越高越有创意</small>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveLLMConfig()">保存配置</button>
+            </div>
+        </div>
+
+        <!-- Home Assistant配置 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-house-door"></i> 🏠 Home Assistant 配置
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">HA地址</label>
+                        <input type="text" class="form-control" id="haUrl" placeholder="http://192.168.1.x:8123">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">长期令牌</label>
+                        <input type="password" class="form-control" id="haToken" placeholder="Long-Lived Access Token">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveHAConfig()">保存配置</button>
+                <button class="btn btn-outline-secondary" onclick="testHA()">测试连接</button>
+            </div>
+        </div>
+
+        <!-- 服务配置 -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-play-circle"></i> 🎵 音乐服务配置
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">本地API地址</label>
+                    <input type="text" class="form-control" id="musicApiUrl" placeholder="http://localhost:3000">
+                    <small class="text-muted">部署本地API后可填入地址，如 http://192.168.1.x:3000</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">音乐源</label>
+                    <select class="form-select" id="musicSource">
+                        <option value="netEase">网易云音乐</option>
+                        <option value="qq">QQ音乐</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <a href="https://github.com/Binaryify/NeteaseCloudMusicApi" target="_blank" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-github"></i> 查看本地API部署教程
+                    </a>
+                </div>
+                <button class="btn btn-primary" onclick="saveMusicConfig()">保存配置</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 页面加载时读取配置
+        window.addEventListener('load', async () => {
+            await loadConfig();
+        });
+
+        async function loadConfig() {
+            try {
+                // 读取LLM配置
+                const llmRes = await fetch('/api/config/llm');
+                const llmData = await llmRes.json();
+                if (llmData.api_url) document.getElementById('llmUrl').value = llmData.api_url || '';
+                if (llmData.api_key) document.getElementById('llmKey').value = llmData.api_key || '';
+                if (llmData.model) document.getElementById('llmModel').value = llmData.model || 'gpt-3.5-turbo';
+                if (llmData.temperature) document.getElementById('llmTemp').value = llmData.temperature || 0.7;
+
+                // 读取HA配置
+                const haRes = await fetch('/api/config/ha');
+                const haData = await haRes.json();
+                if (haData.url) document.getElementById('haUrl').value = haData.url || '';
+                if (haData.token) document.getElementById('haToken').value = haData.token || '';
+
+                // 读取音乐配置
+                const musicRes = await fetch('/api/config/music');
+                const musicData = await musicRes.json();
+                if (musicData.source) document.getElementById('musicSource').value = musicData.source || 'netEase';
+                if (musicData.local_api_url) document.getElementById('musicApiUrl').value = musicData.local_api_url || '';
+            } catch (e) {
+                console.error('加载配置失败:', e);
+            }
+        }
+
+        async function saveLLMConfig() {
+            const config = {
+                enabled: true,
+                api_url: document.getElementById('llmUrl').value,
+                api_key: document.getElementById('llmKey').value,
+                model: document.getElementById('llmModel').value,
+                temperature: parseFloat(document.getElementById('llmTemp').value)
+            };
+            try {
+                const res = await fetch('/api/config/llm', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 大模型配置已保存');
+                } else {
+                    alert('❌ 保存失败');
+                }
+            } catch (e) {
+                alert('❌ 保存失败: ' + e.message);
+            }
+        }
+
+        async function saveHAConfig() {
+            const config = {
+                enabled: true,
+                url: document.getElementById('haUrl').value,
+                token: document.getElementById('haToken').value
+            };
+            try {
+                const res = await fetch('/api/config/ha', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ Home Assistant配置已保存');
+                } else {
+                    alert('❌ 保存失败');
+                }
+            } catch (e) {
+                alert('❌ 保存失败: ' + e.message);
+            }
+        }
+
+        async function saveMusicConfig() {
+            const config = {
+                enabled: true,
+                source: document.getElementById('musicSource').value,
+                local_api_url: document.getElementById('musicApiUrl').value
+            };
+            try {
+                const res = await fetch('/api/config/music', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ 音乐配置已保存');
+                } else {
+                    alert('❌ 保存失败');
+                }
+            } catch (e) {
+                alert('❌ 保存失败: ' + e.message);
+            }
+        }
+
+        async function testHA() {
+            try {
+                const res = await fetch('/api/ha/test');
+                const data = await res.json();
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (e) {
+                alert('❌ 测试失败: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

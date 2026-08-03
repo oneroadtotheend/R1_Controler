@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斐讯R1智能控制中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --sidebar-width: 220px;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            padding: 20px 0;
+            z-index: 1000;
+        }
+        .sidebar .logo {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 20px;
+        }
+        .sidebar .logo h4 {
+            margin: 0;
+            font-weight: 600;
+        }
+        .sidebar .nav-item {
+            padding: 0;
+        }
+        .sidebar .nav-link {
+            padding: 12px 20px;
+            color: rgba(255,255,255,0.8);
+            border-left: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-left-color: white;
+        }
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            padding: 15px 20px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connected { background: #4CAF50; }
+        .status-disconnected { background: #FF5722; }
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="logo">
+            <h4>🎵 斐讯R1控制</h4>
+            <small>Smart Control Center</small>
+        </div>
+        <nav class="nav flex-column">
+            <a class="nav-link active" href="/">
+                <i class="bi bi-house"></i> 首页
+            </a>
+            <a class="nav-link" href="/settings">
+                <i class="bi bi-gear"></i> 设置
+            </a>
+            <a class="nav-link" href="/music">
+                <i class="bi bi-music-player"></i> 音乐
+            </a>
+            <a class="nav-link" href="/ha">
+                <i class="bi bi-house-door"></i> 智能家居
+            </a>
+            <a class="nav-link" href="/chat">
+                <i class="bi bi-chat-dots"></i> AI对话
+            </a>
+            <a class="nav-link" href="/voice">
+                <i class="bi bi-mic"></i> 语音控制
+            </a>
+            <a class="nav-link" href="/monitor">
+                <i class="bi bi-shield-check"></i> 服务监控
+            </a>
+        </nav>
+    </div>
+
+    <!-- 主内容 -->
+    <div class="main-content">
+        <h4 class="mb-4">控制面板</h4>
+
+        <!-- 设备状态 -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-phone"></i> 设备状态</span>
+                <span id="connectionStatus">
+                    <span class="status-indicator status-disconnected"></span>
+                    <span id="statusText">未连接</span>
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">设备IP地址</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="deviceIp" value="192.168.1.100:5555">
+                                <button class="btn btn-primary" onclick="connectDevice()">连接</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">设备信息</label>
+                            <div id="deviceInfo" class="text-muted">未连接设备</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷操作 -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-camera fs-1 text-primary"></i>
+                        <h5 class="mt-3">截屏</h5>
+                        <button class="btn btn-outline-primary btn-sm" onclick="takeScreenshot()">截取屏幕</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-play-circle fs-1 text-success"></i>
+                        <h5 class="mt-3">音乐</h5>
+                        <button class="btn btn-outline-success btn-sm" onclick="location.href='/music'">播放音乐</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-house-door fs-1 text-warning"></i>
+                        <h5 class="mt-3">家居</h5>
+                        <button class="btn btn-outline-warning btn-sm" onclick="location.href='/ha'">控制设备</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-robot fs-1 text-info"></i>
+                        <h5 class="mt-3">AI对话</h5>
+                        <button class="btn btn-outline-info btn-sm" onclick="location.href='/chat'">开始对话</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 服务状态 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <i class="bi bi-list-check"></i> 服务状态
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-disconnected" id="llmStatus"></span>
+                            <span>大模型服务</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-disconnected" id="musicStatus"></span>
+                            <span>音乐服务</span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="status-indicator status-disconnected" id="haStatus"></span>
+                            <span>Home Assistant</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let deviceIp = null;
+
+        // 页面加载时检查设备状态
+        window.addEventListener('load', async () => {
+            await checkDeviceStatus();
+            await checkServicesStatus();
+        });
+
+        // 检查设备状态
+        async function checkDeviceStatus() {
+            try {
+                const res = await fetch('/api/device/status');
+                const data = await res.json();
+                if (data.status === 'connected') {
+                    deviceIp = data.ip;
+                    document.getElementById('statusText').textContent = '已连接 ' + data.ip;
+                    document.getElementById('connectionStatus').querySelector('.status-indicator').className = 'status-indicator status-connected';
+                    document.getElementById('deviceIp').value = data.ip;
+                    if (data.info) {
+                        document.getElementById('deviceInfo').textContent =
+                            `${data.info.brand || ''} ${data.info.model || ''} Android ${data.info.version || ''}`;
+                    }
+                }
+            } catch(e) {
+                console.error('检查设备状态失败:', e);
+            }
+        }
+
+        // 检查服务状态
+        async function checkServicesStatus() {
+            try {
+                // LLM状态
+                const llmRes = await fetch('/api/llm/status');
+                const llmData = await llmRes.json();
+                document.getElementById('llmStatus').className = 'status-indicator ' + (llmData.enabled ? 'status-connected' : 'status-disconnected');
+
+                // 音乐状态
+                const musicRes = await fetch('/api/music/status');
+                const musicData = await musicRes.json();
+                document.getElementById('musicStatus').className = 'status-indicator ' + (musicData.logged_in ? 'status-connected' : 'status-disconnected');
+
+                // HA状态
+                const haRes = await fetch('/api/ha/status');
+                const haData = await haRes.json();
+                document.getElementById('haStatus').className = 'status-indicator ' + (haData.connected ? 'status-connected' : 'status-disconnected');
+            } catch(e) {
+                console.error('检查服务状态失败:', e);
+            }
+        }
+
+        // 连接设备
+        async function connectDevice() {
+            const ip = document.getElementById('deviceIp').value;
+            if (!ip) {
+                alert('请输入设备IP地址');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/device/connect?ip=${ip}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    deviceIp = ip;
+                    document.getElementById('statusText').textContent = '已连接 ' + ip;
+                    document.getElementById('connectionStatus').querySelector('.status-indicator').className = 'status-indicator status-connected';
+                    await checkDeviceStatus();
+                } else {
+                    alert('❌ 连接失败: ' + data.detail);
+                }
+            } catch(e) {
+                alert('❌ 连接失败');
+            }
+        }
+
+        // 截屏
+        async function takeScreenshot() {
+            try {
+                const res = await fetch('/api/device/screenshot');
+                const data = await res.json();
+                if (data.success && data.image) {
+                    // 显示截图（可以添加到页面）
+                    alert('📸 截图成功！可以在设备详情页查看');
+                } else {
+                    alert('❌ 截屏失败: ' + (data.detail || '未知错误'));
+                }
+            } catch(e) {
+                alert('❌ 请先连接设备');
+            }
+        }
+
+        // 音量控制
+        async function volumeControl(action) {
+            try {
+                const res = await fetch(`/api/device/volume?action=${action}`, { method: 'POST' });
+                const data = await res.json();
+                if (!data.success) {
+                    alert('❌ 操作失败: ' + data.detail);
+                }
+            } catch(e) {
+                alert('❌ 请先连接设备');
+            }
+        }
+    </script>
+</body>
+</html>

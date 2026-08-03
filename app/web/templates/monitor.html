@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务监控 - 斐讯R1智能控制中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+            color: #333;
+        }
+        .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%); color: white; padding: 20px 0; z-index: 1000; }
+        .sidebar .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar .nav-link { padding: 12px 20px; color: rgba(255,255,255,0.8); border-left: 3px solid transparent; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.1); color: white; border-left-color: white; }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; }
+        .main-content { margin-left: 220px; padding: 20px; }
+        .card {
+            background: white;
+            
+            border: none;box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .card-header {
+            background: white;border-bottom: 1px solid #eee;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .status-running { color: #28a745; }
+        .status-not_running { color: #dc3545; }
+        .status-unresponsive { color: #ffc107; }
+        .status-unknown { color: #6c757d; }
+        
+        .memory-bar {
+            height: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .memory-used {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+            transition: width 0.5s;
+        }
+        
+        .log-console {
+            background: white;border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-time { color: #6e7681; }
+        .log-info { color: #2196F3; }
+        .log-warn { color: #ff9800; }
+        .log-error { color: #f44336; }
+        
+        .service-card {
+            transition: all 0.3s;
+        }
+        .service-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo"><h4>🎵 斐讯R1控制</h4></div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="/"><i class="bi bi-house"></i> 首页</a>
+            <a class="nav-link" href="/settings"><i class="bi bi-gear"></i> 设置</a>
+            <a class="nav-link" href="/music"><i class="bi bi-music-player"></i> 音乐</a>
+            <a class="nav-link" href="/ha"><i class="bi bi-house-door"></i> 智能家居</a>
+            <a class="nav-link" href="/chat"><i class="bi bi-chat-dots"></i> AI对话</a>
+            <a class="nav-link" href="/voice"><i class="bi bi-mic"></i> 语音控制</a>
+            <a class="nav-link active" href="/monitor"><i class="bi bi-shield-check"></i> 服务监控</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+    <div class="container py-4">
+        <!-- 标题 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="mb-0"><i class="bi bi-shield-check"></i> 服务监控</h3>
+                <small class="text-muted">实时监控R1服务状态，自动修复问题</small>
+            </div>
+            <div>
+                <span id="monitorStatus" class="badge bg-success pulse">
+                    <i class="bi bi-circle-fill"></i> 监控中
+                </span>
+            </div>
+        </div>
+        
+        <!-- 内存状态 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-memory"></i> 系统内存</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 id="memoryTotal">0 MB</h4>
+                            <small class="text-muted">总内存</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 id="memoryUsed">0 MB</h4>
+                            <small class="text-muted">已用</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <h4 id="memoryFree" class="text-success">0 MB</h4>
+                            <small class="text-muted">可用</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="memory-bar mt-3">
+                    <div id="memoryBar" class="memory-used" style="width: 0%"></div>
+                </div>
+                <div class="text-center mt-2">
+                    <button class="btn btn-sm btn-outline-warning" onclick="cleanupMemory()">
+                        <i class="bi bi-trash"></i> 清理内存
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 服务状态 -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card service-card">
+                    <div class="card-header d-flex justify-content-between">
+                        <span><i class="bi bi-mic"></i> 云知声服务</span>
+                        <span id="unisoundStatus" class="badge bg-secondary">检测中</span>
+                    </div>
+                    <div class="card-body text-center">
+                        <i id="unisoundIcon" class="bi bi-mic" style="font-size: 40px;"></i>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-sm btn-outline-primary w-100" onclick="restartService('unisound')">
+                            <i bi-arrow-repeat></i> 重启服务
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card service-card">
+                    <div class="card-header d-flex justify-content-between">
+                        <span><i class="bi bi-speaker"></i> EchoService</span>
+                        <span id="echo_serviceStatus" class="badge bg-secondary">检测中</span>
+                    </div>
+                    <div class="card-body text-center">
+                        <i id="echo_serviceIcon" class="bi bi-speaker" style="font-size: 40px;"></i>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-sm btn-outline-primary w-100" onclick="restartService('echo_service')">
+                            <i bi-arrow-repeat></i> 重启服务
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card service-card">
+                    <div class="card-header d-flex justify-content-between">
+                        <span><i class="bi bi-play-circle"></i> 媒体服务</span>
+                        <span id="mediaserverStatus" class="badge bg-secondary">检测中</span>
+                    </div>
+                    <div class="card-body text-center">
+                        <i id="mediaserverIcon" class="bi bi-play-circle" style="font-size: 40px;"></i>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-sm btn-outline-primary w-100" onclick="restartService('mediaserver')">
+                            <i bi-arrow-repeat></i> 重启服务
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 控制按钮 -->
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <button class="btn btn-success me-2" onclick="startMonitor()">
+                    <i class="bi bi-play"></i> 启动监控
+                </button>
+                <button class="btn btn-danger me-2" onclick="stopMonitor()">
+                    <i class="bi bi-stop"></i> 停止监控
+                </button>
+                <button class="btn btn-warning me-2" onclick="restartAll()">
+                    <i bi-arrow-repeat></i> 重启所有服务
+                </button>
+                <button class="btn btn-info" onclick="refreshStatus()">
+                    <i class="bi bi-arrow-clockwise"></i> 刷新
+                </button>
+            </div>
+        </div>
+        
+        <!-- 日志 -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-terminal"></i> 监控日志</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="clearLogs()">
+                    清空
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="logConsole" class="log-console">
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-terminal" style="font-size: 30px;"></i>
+                        <p>等待日志...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 返回 -->
+        <div class="text-center mt-4">
+            <a href="/" class="btn btn-light"><i class="bi bi-house-door"></i> 返回首页</a>
+        </div>
+    </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let autoRefresh = true;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshStatus();
+            // 自动刷新
+            setInterval(() => {
+                if (autoRefresh) refreshStatus();
+            }, 5000);
+        });
+        
+        // 刷新状态
+        async function refreshStatus() {
+            try {
+                const res = await fetch('/api/monitor/status');
+                const data = await res.json();
+                
+                // 更新内存
+                if (data.memory) {
+                    const total = data.memory.total / 1024 / 1024;
+                    const used = data.used / 1024 / 1024;
+                    const free = (data.memory.total - data.memory.used) / 1024 / 1024;
+                    
+                    document.getElementById('memoryTotal').textContent = Math.round(total) + ' MB';
+                    document.getElementById('memoryUsed').textContent = Math.round(used) + ' MB';
+                    document.getElementById('memoryFree').textContent = Math.round(free) + ' MB';
+                    document.getElementById('memoryBar').style.width = (used / total * 100) + '%';
+                }
+                
+                // 更新服务状态
+                const services = data.services || {};
+                updateServiceStatus('unisound', services.unisound);
+                updateServiceStatus('echo_service', services.echo_service);
+                updateServiceStatus('mediaserver', services.mediaserver);
+                
+            } catch(e) {
+                console.error('获取状态失败:', e);
+            }
+        }
+        
+        // 更新服务状态显示
+        function updateServiceStatus(name, status) {
+            const statusEl = document.getElementById(name + 'Status');
+            const iconEl = document.getElementById(name + 'Icon');
+            
+            statusEl.textContent = status || 'unknown';
+            
+            // 样式
+            statusEl.className = 'badge';
+            iconEl.className = '';
+            
+            if (status === 'running') {
+                statusEl.classList.add('bg-success');
+                iconEl.classList.add('bi', 'bi-mic-fill', 'status-running');
+            } else if (status === 'not_running') {
+                statusEl.classList.add('bg-danger');
+                iconEl.classList.add('bi', 'bi-mic-mute', 'status-not_running');
+            } else if (status === 'unresponsive') {
+                statusEl.classList.add('bg-warning');
+                iconEl.classList.add('bi', 'bi-mic', 'status-unresponsive');
+            } else {
+                statusEl.classList.add('bg-secondary');
+                iconEl.classList.add('bi', 'bi-question-circle', 'status-unknown');
+            }
+        }
+        
+        // 重启单个服务
+        async function restartService(name) {
+            if (!confirm('确定要重启这个服务吗?')) return;
+            
+            addLog('正在重启服务: ' + name, 'warn');
+            
+            try {
+                const res = await fetch('/api/monitor/restart/' + name, {method: 'POST'});
+                const data = await res.json();
+                
+                if (data.success) {
+                    addLog('✓ 服务重启成功: ' + name, 'info');
+                } else {
+                    addLog('✗ 服务重启失败: ' + name, 'error');
+                }
+                
+                setTimeout(refreshStatus, 2000);
+                
+            } catch(e) {
+                addLog('✗ 重启失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 重启所有服务
+        async function restartAll() {
+            if (!confirm('确定要重启所有服务吗?')) return;
+            
+            addLog('正在重启所有服务...', 'warn');
+            
+            try {
+                const res = await fetch('/api/monitor/restart_all', {method: 'POST'});
+                const data = await res.json();
+                
+                addLog('重启完成: ' + JSON.stringify(data.results), 'info');
+                setTimeout(refreshStatus, 3000);
+                
+            } catch(e) {
+                addLog('✗ 重启失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 清理内存
+        async function cleanupMemory() {
+            addLog('正在清理内存...', 'warn');
+            
+            try {
+                const res = await fetch('/api/monitor/cleanup_memory', {method: 'POST'});
+                const data = await res.json();
+                
+                if (data.success) {
+                    addLog('✓ 内存清理完成', 'info');
+                }
+                
+                setTimeout(refreshStatus, 1000);
+                
+            } catch(e) {
+                addLog('✗ 清理失败: ' + e.message, 'error');
+            }
+        }
+        
+        // 启动监控
+        async function startMonitor() {
+            await fetch('/api/monitor/start', {method: 'POST'});
+            document.getElementById('monitorStatus').className = 'badge bg-success pulse';
+            document.getElementById('monitorStatus').innerHTML = '<i class="bi bi-circle-fill"></i> 监控中';
+            addLog('✓ 服务监控已启动', 'info');
+        }
+        
+        // 停止监控
+        async function stopMonitor() {
+            await fetch('/api/monitor/stop', {method: 'POST'});
+            document.getElementById('monitorStatus').className = 'badge bg-secondary';
+            document.getElementById('monitorStatus').innerHTML = '<i class="bi bi-pause-fill"></i> 已停止';
+            addLog('✗ 服务监控已停止', 'warn');
+        }
+        
+        // 刷新日志
+        async function refreshLogs() {
+            try {
+                const res = await fetch('/api/monitor/logs?last_n=20');
+                const data = await res.json();
+                
+                const console = document.getElementById('logConsole');
+                if (data.logs && data.logs.length > 0) {
+                    console.innerHTML = data.logs.map(log => {
+                        const time = log.substring(0, 19);
+                        const msg = log.substring(20);
+                        let cls = 'log-info';
+                        if (msg.includes('✗') || msg.includes('错误')) cls = 'log-error';
+                        if (msg.includes('警告')) cls = 'log-warn';
+                        return `<div class="log-entry"><span class="log-time">${time}</span> <span class="${cls}">${msg}</span></div>`;
+                    }).join('');
+                }
+            } catch(e) {}
+        }
+        
+        // 添加日志
+        function addLog(msg, level = 'info') {
+            const console = document.getElementById('logConsole');
+            const now = new Date().toISOString().substring(0, 19);
+            
+            let cls = 'log-info';
+            if (level === 'error') cls = 'log-error';
+            if (level === 'warn') cls = 'log-warn';
+            
+            const entry = `<div class="log-entry"><span class="log-time">[${now}]</span> <span class="${cls}">${msg}</span></div>`;
+            
+            const emptyMsg = console.querySelector('.text-muted');
+            if (emptyMsg) emptyMsg.remove();
+            
+            console.innerHTML = entry + console.innerHTML;
+        }
+        
+        // 清空日志
+        function clearLogs() {
+            document.getElementById('logConsole').innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-terminal" style="font-size: 30px;"></i><p>日志已清空</p></div>';
+        }
+        
+        // 定期刷新日志
+        setInterval(refreshLogs, 3000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语音控制 - 斐讯R1智能控制中心</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .sidebar { position: fixed; top: 0; left: 0; width: 220px; height: 100vh; background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%); color: white; padding: 20px 0; z-index: 1000; }
+        .sidebar .logo { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .sidebar .nav-link { padding: 12px 20px; color: rgba(255,255,255,0.8); border-left: 3px solid transparent; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.1); color: white; border-left-color: white; }
+        .sidebar .nav-link i { margin-right: 10px; width: 20px; }
+        .main-content { margin-left: 220px; padding: 20px; min-height: 100vh; }
+        .container {
+            max-width: 800px;
+        }
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px 20px 0 0 !important;
+            padding: 20px;
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            transition: all 0.3s;
+        }
+        .btn-gradient:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-gradient:active {
+            transform: scale(0.95);
+        }
+        .voice-btn {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            font-size: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+        .voice-btn.listening {
+            animation: pulse 1.5s infinite;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.7); }
+            70% { box-shadow: 0 0 0 30px rgba(245, 87, 108, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 87, 108, 0); }
+        }
+        .command-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .command-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .command-item:last-child {
+            border-bottom: none;
+        }
+        .quick-commands {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .quick-btn {
+            padding: 15px;
+            border-radius: 15px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .status-connected {
+            background: #28a745;
+            color: white;
+        }
+        .status-disconnected {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo"><h4>🎵 斐讯R1控制</h4></div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="/"><i class="bi bi-house"></i> 首页</a>
+            <a class="nav-link" href="/settings"><i class="bi bi-gear"></i> 设置</a>
+            <a class="nav-link" href="/music"><i class="bi bi-music-player"></i> 音乐</a>
+            <a class="nav-link" href="/ha"><i class="bi bi-house-door"></i> 智能家居</a>
+            <a class="nav-link" href="/chat"><i class="bi bi-chat-dots"></i> AI对话</a>
+            <a class="nav-link active" href="/voice"><i class="bi bi-mic"></i> 语音控制</a>
+            <a class="nav-link" href="/monitor"><i class="bi bi-shield-check"></i> 服务监控</a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+    <div class="container">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-0"><i class="bi bi-mic"></i> 语音控制</h4>
+                    <small>通过语音控制斐讯R1</small>
+                </div>
+                <span id="connectionStatus" class="status-badge status-disconnected">
+                    <i class="bi bi-wifi"></i> 未连接
+                </span>
+            </div>
+            <div class="card-body text-center p-5">
+                <!-- 语音按钮 -->
+                <button id="voiceBtn" class="btn btn-gradient voice-btn mb-4" onclick="toggleVoice()">
+                    <i class="bi bi-mic"></i>
+                </button>
+                <p id="voiceStatus" class="text-muted mb-4">点击开始语音对话</p>
+                
+                <!-- 快捷命令 -->
+                <div class="quick-commands">
+                    <button class="quick-btn" onclick="sendCommand('播放音乐')">
+                        <i class="bi bi-play-fill"></i> 播放音乐
+                    </button>
+                    <button class="quick-btn" onclick="sendCommand('暂停')">
+                        <i class="bi bi-pause-fill"></i> 暂停
+                    </button>
+                    <button class="quick-btn" onclick="sendCommand('下一首')">
+                        <i class="bi bi-skip-forward-fill"></i> 下一首
+                    </button>
+                    <button class="quick-btn" onclick="sendCommand('开灯')">
+                        <i class="bi bi-lightbulb-fill"></i> 开灯
+                    </button>
+                    <button class="quick-btn" onclick="sendCommand('关灯')">
+                        <i class="bi bi-lightbulb"></i> 关灯
+                    </button>
+                    <button class="quick-btn" onclick="sendCommand('今天天气怎么样')">
+                        <i class="bi bi-cloud-sun-fill"></i> 查询天气
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 命令历史 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> 命令历史</h5>
+            </div>
+            <div class="card-body command-list" id="commandHistory">
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-chat-dots" style="font-size: 40px;"></i>
+                    <p class="mt-2">暂无命令记录</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- EchoService控制 -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-speaker-fill"></i> EchoService 控制</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <button class="btn btn-outline-primary" onclick="echoPlay()">
+                            <i class="bi bi-play-fill"></i> 播放
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-primary" onclick="echoPause()">
+                            <i class="bi bi-pause-fill"></i> 暂停
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-primary" onclick="echoNext()">
+                            <i class="bi bi-skip-forward-fill"></i> 下一首
+                        </button>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <button class="btn btn-outline-secondary" onclick="volumeUp()">
+                            <i class="bi bi-volume-up-fill"></i> 音量+
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-secondary" onclick="volumeDown()">
+                            <i class="bi bi-volume-down-fill"></i> 音量-
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button class="btn btn-outline-info" onclick="testSpeak()">
+                            <i class="bi bi-chat-quote"></i> 测试播报
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 返回导航 -->
+        <div class="text-center mt-4">
+            <a href="/" class="btn btn-light"><i class="bi bi-house-door"></i> 返回首页</a>
+        </div>
+    </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let isListening = false;
+        
+        // 切换语音监听
+        function toggleVoice() {
+            const btn = document.getElementById('voiceBtn');
+            const status = document.getElementById('voiceStatus');
+            
+            if (!isListening) {
+                // 开始监听
+                isListening = true;
+                btn.classList.add('listening');
+                status.textContent = '正在聆听...';
+                
+                // 调用语音识别API
+                // 这里需要浏览器的Web Speech API或后端API
+                startSpeechRecognition();
+            } else {
+                // 停止监听
+                isListening = false;
+                btn.classList.remove('listening');
+                status.textContent = '点击开始语音对话';
+            }
+        }
+        
+        // 使用浏览器语音识别
+        function startSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('您的浏览器不支持语音识别，请使用Chrome浏览器');
+                isListening = false;
+                document.getElementById('voiceBtn').classList.remove('listening');
+                document.getElementById('voiceStatus').textContent = '点击开始语音对话';
+                return;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'zh-CN';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            recognition.onresult = function(event) {
+                const text = event.results[0][0].transcript;
+                sendCommand(text);
+            };
+            
+            recognition.onerror = function(event) {
+                console.error('语音识别错误:', event.error);
+                isListening = false;
+                document.getElementById('voiceBtn').classList.remove('listening');
+                document.getElementById('voiceStatus').textContent = '识别失败，请重试';
+            };
+            
+            recognition.onend = function() {
+                isListening = false;
+                document.getElementById('voiceBtn').classList.remove('listening');
+                document.getElementById('voiceStatus').textContent = '点击开始语音对话';
+            };
+            
+            recognition.start();
+        }
+        
+        // 发送命令
+        async function sendCommand(text) {
+            if (!text) return;
+            
+            // 添加到历史
+            addToHistory(text, 'user');
+            
+            // 发送到后端
+            try {
+                const res = await fetch('/api/voice/command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: text, use_llm: true})
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    addToHistory(data.response, 'assistant');
+                } else {
+                    addToHistory(data.response || '处理失败', 'error');
+                }
+            } catch (e) {
+                addToHistory('请求失败: ' + e.message, 'error');
+            }
+            
+            // 重置按钮状态
+            isListening = false;
+            document.getElementById('voiceBtn').classList.remove('listening');
+            document.getElementById('voiceStatus').textContent = '点击开始语音对话';
+        }
+        
+        // 添加到历史记录
+        function addToHistory(text, type) {
+            const history = document.getElementById('commandHistory');
+            const emptyMsg = history.querySelector('.text-muted');
+            if (emptyMsg) emptyMsg.remove();
+            
+            const item = document.createElement('div');
+            item.className = 'command-item';
+            
+            const icon = type === 'user' ? 'bi-person-fill' : (type === 'error' ? 'bi-exclamation-triangle-fill' : 'bi-robot');
+            const color = type === 'user' ? '#667eea' : (type === 'error' ? '#dc3545' : '#28a745');
+            
+            item.innerHTML = `
+                <div>
+                    <i class="bi ${icon}" style="color: ${color}"></i>
+                    <span class="ms-2">${text}</span>
+                </div>
+                <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+            `;
+            
+            history.insertBefore(item, history.firstChild);
+        }
+        
+        // EchoService控制函数
+        async function echoPlay() {
+            await fetch('/api/voice/echo/play', {method: 'POST'});
+        }
+        
+        async function echoPause() {
+            await fetch('/api/voice/echo/pause', {method: 'POST'});
+        }
+        
+        async function echoNext() {
+            await fetch('/api/voice/echo/next', {method: 'POST'});
+        }
+        
+        async function volumeUp() {
+            await fetch('/api/voice/echo/volume/up', {method: 'POST'});
+        }
+        
+        async function volumeDown() {
+            await fetch('/api/voice/echo/volume/down', {method: 'POST'});
+        }
+        
+        async function testSpeak() {
+            const text = prompt('请输入要播报的文字:') || '你好，我是斐讯R1智能音响';
+            await fetch('/api/voice/echo/speak?text=' + encodeURIComponent(text), {method: 'POST'});
+        }
+        
+        // 页面加载时检查连接状态
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/device/status');
+                const data = await res.json();
+                
+                const status = document.getElementById('connectionStatus');
+                if (data.connected) {
+                    status.className = 'status-badge status-connected';
+                    status.innerHTML = '<i class="bi bi-wifi"></i> 已连接';
+                }
+            } catch(e) {}
+        }
+        
+        checkStatus();
+    </script>
+</body>
+</html>

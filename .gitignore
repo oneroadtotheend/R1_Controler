@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+env/
+
+# Buildozer / p4a build artifacts
+.buildozer/
+build/
+bin/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# 真实配置（含API Key/Token），避免提交到仓库泄露；
+# APK首次运行会自动生成默认 settings.json，用户在网页中填写。
+config/settings.json
