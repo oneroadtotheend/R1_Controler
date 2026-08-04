@@ -417,8 +417,9 @@ class VoiceAssistant:
             return "已关闭灯光（模拟）"
         
         elif intent == "查询天气":
-            # 可以调用天气API
-            return "今天天气晴朗，温度25度"
+            from .weather_service import get_weather_service
+            weather_svc = get_weather_service()
+            return weather_svc.get_weather("北京")
         
         elif intent == "闲聊":
             if self.llm:

@@ -310,9 +310,11 @@ class ActionExecutor:
     
     def _handle_weather(self, params: Dict[str, Any]) -> str:
         """查询天气"""
-        # 这里可以接入天气API
-        # 暂时返回模拟数据
-        return "今天天气晴朗，温度25度，适合外出"
+        from .weather_service import get_weather_service
+        weather_svc = get_weather_service()
+        # 从参数中提取城市，默认北京
+        city = params.get("city", "北京")
+        return weather_svc.get_weather(city)
     
     def _handle_time(self, params: Dict[str, Any]) -> str:
         """查询时间"""
@@ -348,7 +350,7 @@ class VoiceCommandProcessor:
         """
         # 初始化各个服务
         from .echo_service import EchoServiceController
-        from .ha_service import HomeAssistantService
+        from .ha_service import HAService
         from .music_service import MusicService
         from .llm_service import LLMService
         

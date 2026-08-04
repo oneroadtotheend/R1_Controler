@@ -50,33 +50,65 @@ class UnisoundService:
     
     def __init__(self, device_ip: str = None):
         self.device_ip = device_ip
-        
+        # 延迟导入避免循环依赖
+        from modules.adb_helper import ADBHelper
+        self.adb = ADBHelper(device_ip) if device_ip else None
+
     def start_unisound(self) -> bool:
         """启动云知声服务"""
-        # 通过ADB启动服务
-        pass
-    
+        if not self.adb:
+            return False
+        try:
+            # 启动云知声主Activity
+            # com.unisound.vui 是云知声主包（需确认实际包名）
+            # 这里用 phicomm 的包名尝试
+            self.adb.shell("am start -n com.phicomm.speaker.player/com.phicomm.speaker.player.ui.MainActivity")
+            return True
+        except Exception:
+            return False
+
     def stop_unisound(self) -> bool:
         """停止云知声服务"""
-        pass
-    
+        if not self.adb:
+            return False
+        try:
+            # 强制停止云知声应用
+            self.adb.shell("am force-stop com.phicomm.speaker.player")
+            return True
+        except Exception:
+            return False
+
     def trigger_wakeup(self) -> bool:
         """触发一次唤醒（模拟唤醒词）"""
-        # 发送广播触发唤醒
-        pass
-    
+        if not self.adb:
+            return False
+        try:
+            # 发送广播模拟唤醒词
+            self.adb.shell("am broadcast -a com.unisound.vui.wakeup -e wakeup '小飞小飞'")
+            return True
+        except Exception:
+            return False
+
     def send_voice_text(self, text: str) -> str:
         """发送文本进行语音识别和处理
-        
+
         这是一个简化的接口，直接发送文本让云知声处理
+        注：云知声主要接收语音输入，此方法用于调试或测试
         """
-        # 可以通过广播或服务调用
-        pass
-    
+        # 可通过广播发送文本（取决于云知声是否支持）
+        if not self.adb:
+            return "设备未连接"
+        try:
+            self.adb.shell(f"am broadcast -a com.unisound.vui.asr --es text '{text}'")
+            return "已发送文本到语音识别"
+        except Exception as e:
+            return f"发送失败: {str(e)}"
+
     def get_tts_audio(self, text: str) -> bytes:
         """获取TTS音频"""
-        # 调用TTS服务获取音频
-        pass
+        # 云知声 TTS 需要调用其 SDK，此处返回空
+        # 实际项目可使用其他 TTS 服务
+        return b""
 
 
 # ========== 整合后的语音控制器 ==========
@@ -203,8 +235,9 @@ class R1VoiceController:
             return "已关闭灯光"
             
         elif intent == "查询天气":
-            # 可以接入天气API
-            return "今天天气晴朗，温度25度"
+            from .weather_service import get_weather_service
+            weather_svc = get_weather_service()
+            return weather_svc.get_weather("北京")
             
         elif intent == "查询时间":
             from datetime import datetime

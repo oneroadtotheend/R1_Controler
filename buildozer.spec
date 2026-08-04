@@ -27,7 +27,7 @@ android.entrypoint = main.py
 android.permissions = INTERNET,ACCESS_NETWORK_STATE,RECORD_AUDIO,WAKE_LOCK,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
 
 # Android API 级别（R1 为老设备，min 21 兼容）
-android.targetapi = 29
+android.targetapi = 31
 android.minapi = 21
 android.accept_sdk_license = True
 android.wakelock = True

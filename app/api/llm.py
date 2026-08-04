@@ -50,7 +50,33 @@ async def chat(request: Request):
         }
 
     try:
-        response = llm.chat(message)
+        # 意图识别 + 天气服务
+        message_lower = message.lower()
+        weather_keywords = ["天气", "温度", "气候", "晴", "雨", "雪", "风"]
+        is_weather_query = any(kw in message for kw in weather_keywords)
+
+        if is_weather_query:
+            # 调用天气服务
+            from modules.weather_service import get_weather_service
+            weather_svc = get_weather_service()
+
+            # 尝试从消息中提取城市名
+            city = None
+            # 简单的城市提取逻辑
+            city_keywords = ["北京", "上海", "广州", "深圳", "杭州", "南京", "成都", "重庆", "武汉", "西安", "苏州", "天津"]
+            for ck in city_keywords:
+                if ck in message:
+                    city = ck
+                    break
+
+            # 获取客户端 IP
+            client_ip = request.client.host if request.client else None
+
+            # 如果没有指定城市，通过 IP 自动定位
+            response = weather_svc.get_weather(city=city, ip=client_ip)
+        else:
+            response = llm.chat(message)
+
         return {"response": response}
     except Exception as e:
         return {"response": f"调用失败: {str(e)}", "error": True}

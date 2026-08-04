@@ -63,6 +63,11 @@ class LLMService:
             return result['choices'][0]['message']['content']
         raise Exception("API返回格式异常")
 
+    def is_configured(self):
+        """检查是否已配置"""
+        api_key = self.config.get("llm.api_key")
+        return bool(api_key)
+
     def analyze_intent(self, message):
         """意图分析"""
         prompt = f"""分析用户消息意图，返回JSON格式。

@@ -86,6 +86,12 @@ class HAService:
         domain = entity_id.split('.')[0]
         return self.call_service(domain, "toggle", entity_id)
 
+    def is_configured(self):
+        """检查是否已配置"""
+        url = self.config.get("home_assistant.url")
+        token = self.config.get("home_assistant.token")
+        return bool(url and token)
+
     def test_connection(self):
         """测试连接"""
         url = self.config.get("home_assistant.url")

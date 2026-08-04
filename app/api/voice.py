@@ -105,76 +105,61 @@ async def start_wakeup(request: Request):
 
 
 # ========== 集成EchoService控制 ==========
+# 复用 app.state.echo 实例，避免每次请求重新创建连接
+def _get_echo(request: Request):
+    """获取EchoService实例，未初始化时返回None"""
+    return getattr(request.app.state, 'echo', None)
 
-from modules.echo_service import EchoServiceController
 
 @router.post("/echo/play")
 async def echo_play(request: Request):
     """EchoService播放"""
-    config = getattr(request.app.state, 'config', None)
-    device_ip = config.get("device.ip", "") if config else ""
-    
-    echo = EchoServiceController(device_ip)
+    if not (echo := _get_echo(request)):
+        return {"success": False, "message": "Echo服务未初始化"}
     echo.play()
-    
     return {"success": True, "message": "已播放"}
 
 
 @router.post("/echo/pause")
 async def echo_pause(request: Request):
     """EchoService暂停"""
-    config = getattr(request.app.state, 'config', None)
-    device_ip = config.get("device.ip", "") if config else ""
-    
-    echo = EchoServiceController(device_ip)
+    if not (echo := _get_echo(request)):
+        return {"success": False, "message": "Echo服务未初始化"}
     echo.pause()
-    
     return {"success": True, "message": "已暂停"}
 
 
 @router.post("/echo/next")
 async def echo_next(request: Request):
     """EchoService下一首"""
-    config = getattr(request.app.state, 'config', None)
-    device_ip = config.get("device.ip", "") if config else ""
-    
-    echo = EchoServiceController(device_ip)
+    if not (echo := _get_echo(request)):
+        return {"success": False, "message": "Echo服务未初始化"}
     echo.next()
-    
     return {"success": True, "message": "已切换到下一首"}
 
 
 @router.post("/echo/volume/up")
 async def echo_volume_up(request: Request):
     """音量增加"""
-    config = getattr(request.app.state, 'config', None)
-    device_ip = config.get("device.ip", "") if config else ""
-    
-    echo = EchoServiceController(device_ip)
+    if not (echo := _get_echo(request)):
+        return {"success": False, "message": "Echo服务未初始化"}
     echo.volume_up()
-    
     return {"success": True, "message": "音量已增加"}
 
 
 @router.post("/echo/volume/down")
 async def echo_volume_down(request: Request):
     """音量减少"""
-    config = getattr(request.app.state, 'config', None)
-    device_ip = config.get("device.ip", "") if config else ""
-    
-    echo = EchoServiceController(device_ip)
+    if not (echo := _get_echo(request)):
+        return {"success": False, "message": "Echo服务未初始化"}
     echo.volume_down()
-    
     return {"success": True, "message": "音量已减小"}
 
 
 @router.post("/echo/speak")
 async def echo_speak(text: str, request: Request):
     """语音播报"""
-    config = getattr(request.app.state, 'config', None)
-    device_ip = config.get("device.ip", "") if config else ""
-    
-    echo = EchoServiceController(device_ip)
+    if not (echo := _get_echo(request)):
+        return {"success": False, "message": "Echo服务未初始化"}
     echo.speak(text)
-    
     return {"success": True, "message": f"正在播报: {text}"}

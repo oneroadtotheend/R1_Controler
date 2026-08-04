@@ -1,39 +1,85 @@
-name: Build R1 Controller APK
+name: Build Android APK
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: '3.11'
 
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        with:
-          command: buildozer android debug
-          buildozer_version: stable
-          workdir: "."
-
-      - name: Rename APK to R1_controler_2.0.0.apk
+      - name: Install system dependencies
         run: |
-          cd bin
-          shopt -s nullglob
-          for f in *.apk; do
-            mv "$f" "R1_controler_2.0.0.apk"
-          done
+          sudo apt-get update
+          sudo apt-get install -y \
+            openjdk-17-jdk \
+            ant \
+            autoconf \
+            libffi-dev \
+            libssl-dev \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libreadline-dev \
+            libsqlite3-dev \
+            libgdbm-dev \
+            libnss3-dev \
+            libtool \
+            unzip \
+            zip
 
-      - name: Upload APK Artifact
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          yes | $ANDROID_HOME/platform-tools/adb --install || true
+
+      - name: Install Android platform and build tools
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-31" "build-tools;31.0.0"
+
+      - name: Set JAVA_HOME
+        run: echo "JAVA_HOME=$JAVA_HOME_17" >> $GITHUB_ENV
+
+      - name: Install Buildozer
+        run: pip install buildozer==1.5.0
+
+      - name: Build APK
+        run: buildozer android debug
+        env:
+          BUILDZER_DEBUG: 1
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: R1_controler_2.0.0
-          path: bin/R1_controler_2.0.0.apk
+          name: r1-controller-apk
+          path: bin/*.apk
+          retention-days: 30
+
+      - name: Upload APK to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: bin/*.apk
+          body: |
+            R1 Controller Android APK
+
+            Download and install on your R1 device.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
