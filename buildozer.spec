@@ -17,7 +17,7 @@ version = 2.0.0
 requirements = python3,kivy==2.2.1,pyjnius,fastapi==0.95.2,uvicorn==0.23.2,jinja2==3.1.2,pyyaml==6.0.1,requests==2.31.0,qrcode==7.4.2,pillow==10.1.0,pydantic==1.10.13
 
 # 横竖屏都支持
-orientation = all
+orientation = sensor
 fullscreen = True
 
 # 入口
