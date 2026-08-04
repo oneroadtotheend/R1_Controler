@@ -14,7 +14,7 @@ source.include_patterns = app/*,modules/*,config/*
 version = 2.0.0
 
 # 依赖（锁定纯Python版本，避免 pydantic v2 的 Rust 扩展在 p4a 无法编译）
-requirements = python3,kivy==2.2.1,pyjnius,fastapi==0.95.2,uvicorn==0.23.2,jinja2==3.1.2,pyyaml==6.0.1,requests==2.31.0,qrcode==7.4.2,pillow==10.1.0,pydantic==1.10.13,cython
+requirements = python3,kivy==2.2.1,pyjnius,fastapi==0.95.2,uvicorn==0.23.2,jinja2==3.1.2,pyyaml==6.0.1,requests==2.31.0,qrcode==7.4.2,pillow==10.1.0,pydantic==1.10.13
 
 # 横竖屏都支持
 orientation = portrait
