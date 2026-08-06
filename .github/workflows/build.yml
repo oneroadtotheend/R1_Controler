@@ -95,10 +95,27 @@ jobs:
           # Use system freetype (avoid broken download URL)
           export P4A_USE_SYSTEM_FREETYPE=1
 
-          # 第一次 build 触发 cgi 问题是因为 build env 装的是最新 cython(用了 import cgi,
-          # Python 3.13+ 移除了 cgi)。我们用 sitecustomize.py + cgi shim 来 hack:
-          # 1. 给 hostpython3(3.14)的 site-packages 加 cgi.py(让 cgi 可用)
-          # 2. 让 buildozer build 后如果失败,能看到真实错误
+          # 1. 预 clone p4a 到 .buildozer 目录(与 buildozer 默认位置一致)
+          P4A_DIR="$HOME/.buildozer/android/platform/python-for-android"
+          mkdir -p "$(dirname "$P4A_DIR")"
+          if [ ! -d "$P4A_DIR" ]; then
+            echo "Pre-cloning p4a..."
+            git clone --depth 1 -b stable https://github.com/kivy/python-for-android.git "$P4A_DIR"
+          else
+            echo "p4a already cloned at $P4A_DIR"
+          fi
+
+          # 2. Patch p4a freetype URL: savannah 返回 502 → 改 gitlab mirror
+          FT_FILE="$P4A_DIR/pythonforandroid/recipes/freetype/__init__.py"
+          if [ -f "$FT_FILE" ]; then
+            FT_VER=$(grep "version =" "$FT_FILE" | head -1 | sed "s/.*'\(.*\)'.*/\1/")
+            echo "p4a freetype version: $FT_VER"
+            sed -i "s|https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz|https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${FT_VER//./-}/freetype-VER-${FT_VER//./-}.tar.gz|" "$FT_FILE"
+            echo "Patched freetype URL:"
+            grep "url =" "$FT_FILE"
+          fi
+
+          # 3. 让 buildozer 失败时暴露真实错误
           set -o pipefail
 
           buildozer android debug 2>&1 | tee /tmp/build.log
