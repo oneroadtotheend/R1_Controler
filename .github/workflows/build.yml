@@ -49,14 +49,10 @@ jobs:
             zip \
             git
 
-      - name: Cache Buildozer + p4a
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.buildozer
-          key: ${{ runner.os }}-buildozer-v2-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            ${{ runner.os }}-buildozer-v2-
+      # Force fresh buildozer + p4a clone to pick up our patches.
+      # Cached p4a from previous runs is the unpatched upstream version, so we wipe it.
+      - name: Wipe cached buildozer
+        run: rm -rf ~/.buildozer build/android/platform
 
       # Force JDK 17 BEFORE setup-android (which would default to JDK 11).
       # cmdline-tools v16+ requires JDK 17 or later.
@@ -95,11 +91,12 @@ jobs:
           # Use system freetype (avoid broken download URL)
           export P4A_USE_SYSTEM_FREETYPE=1
 
-          # 1. 预 clone p4a 到 .buildozer 目录(与 buildozer 默认位置一致)
-          P4A_DIR="$HOME/.buildozer/android/platform/python-for-android"
+          # 1. 预 clone p4a 到 buildozer 实际使用的地方
+          #    buildozer 默认在 <project>/build/android/platform/python-for-android/ 装 p4a
+          P4A_DIR="build/android/platform/python-for-android"
           mkdir -p "$(dirname "$P4A_DIR")"
           if [ ! -d "$P4A_DIR" ]; then
-            echo "Pre-cloning p4a..."
+            echo "Pre-cloning p4a to $P4A_DIR..."
             git clone --depth 1 -b stable https://github.com/kivy/python-for-android.git "$P4A_DIR"
           else
             echo "p4a already cloned at $P4A_DIR"
