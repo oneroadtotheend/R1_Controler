@@ -105,17 +105,30 @@ jobs:
             echo "p4a already cloned at $P4A_DIR"
           fi
 
-          # 2. Patch p4a freetype URL: savannah 返回 502 → 改 gitlab mirror
+          # 2. Patch p4a recipe.py 去掉 --only-binary=:all: 限制
+          #    这个选项强制只装 wheel,而 Pillow/pyjnius 没有 android_21_arm wheel。
+          #    去掉后让 p4a 用源码编译。
+          P4A_RECIPE_PY="$P4A_DIR/pythonforandroid/recipe.py"
+          if [ -f "$P4A_RECIPE_PY" ]; then
+            # 把 "--only-binary=:all:" 替换成空字符串
+            sed -i 's|"--only-binary=:all:",|"",  # PATCH: disabled to allow source build for Pillow/pyjnius|' "$P4A_RECIPE_PY"
+            if grep -q "PATCH: disabled" "$P4A_RECIPE_PY"; then
+              echo "Patched recipe.py: --only-binary=:all: disabled"
+            else
+              echo "WARN: recipe.py patch failed"
+            fi
+          fi
+
+          # 3. Patch p4a freetype URL: savannah 502 → gitlab mirror
           FT_FILE="$P4A_DIR/pythonforandroid/recipes/freetype/__init__.py"
           if [ -f "$FT_FILE" ]; then
             FT_VER=$(grep "version =" "$FT_FILE" | head -1 | sed "s/.*'\(.*\)'.*/\1/")
-            echo "p4a freetype version: $FT_VER"
             sed -i "s|https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz|https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${FT_VER//./-}/freetype-VER-${FT_VER//./-}.tar.gz|" "$FT_FILE"
             echo "Patched freetype URL:"
             grep "url =" "$FT_FILE"
           fi
 
-          # 3. 让 buildozer 失败时暴露真实错误
+          # 4. 让 buildozer 失败时暴露真实错误
           set -o pipefail
 
           buildozer android debug 2>&1 | tee /tmp/build.log
