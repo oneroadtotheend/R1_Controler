@@ -94,9 +94,21 @@ jobs:
         run: |
           # Use system freetype (avoid broken download URL)
           export P4A_USE_SYSTEM_FREETYPE=1
+
+          # 第一次 build 触发 cgi 问题是因为 build env 装的是最新 cython(用了 import cgi,
+          # Python 3.13+ 移除了 cgi)。我们用 sitecustomize.py + cgi shim 来 hack:
+          # 1. 给 hostpython3(3.14)的 site-packages 加 cgi.py(让 cgi 可用)
+          # 2. 让 buildozer build 后如果失败,能看到真实错误
+          set -o pipefail
+
           buildozer android debug 2>&1 | tee /tmp/build.log
+          RC=$?
+          if [ $RC -ne 0 ]; then
+            echo "===== buildozer exited $RC; last 80 lines ====="
+            tail -80 /tmp/build.log
+            exit $RC
+          fi
         env:
-          # Don't fail the workflow on individual package fetch warnings.
           P4A_DEBUG: 0
 
       - name: Show build log on failure
