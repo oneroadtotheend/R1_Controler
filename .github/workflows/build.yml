@@ -92,8 +92,8 @@ jobs:
           export P4A_USE_SYSTEM_FREETYPE=1
 
           # 1. 预 clone p4a 到 buildozer 实际使用的地方
-          #    buildozer 默认在 <project>/build/android/platform/python-for-android/ 装 p4a
-          #    buildozer 强制用 master 分支(--only-binary=:all: 在 master 才有)
+          # buildozer 默认在 <project>/build/android/platform/python-for-android/ 装 p4a
+          # buildozer 强制用 master 分支(--only-binary=:all: 在 master 才有)
           P4A_DIR="build/android/platform/python-for-android"
           mkdir -p "$(dirname "$P4A_DIR")"
           # 先删掉(可能之前存在),buildozer 会自己 clone master
@@ -102,12 +102,12 @@ jobs:
           git clone --depth 1 -b master https://github.com/kivy/python-for-android.git "$P4A_DIR"
 
           # 2. Patch p4a recipe.py 去掉 --only-binary=:all: 限制
-          #    这个选项强制只装 wheel,而 Pillow/pyjnius 没有 android_21_arm wheel。
-          #    去掉后让 p4a 用源码编译。
+          # 这个选项强制只装 wheel,而 Pillow/pyjnius 没有 android_21_arm wheel。
+          # 去掉后让 p4a 用源码编译。
           P4A_RECIPE_PY="$P4A_DIR/pythonforandroid/recipe.py"
           if [ -f "$P4A_RECIPE_PY" ]; then
             # 把 "--only-binary=:all:" 替换成空字符串
-            sed -i 's|"--only-binary=:all:",|"",  # PATCH: disabled to allow source build for Pillow/pyjnius|' "$P4A_RECIPE_PY"
+            sed -i 's|"--only-binary=:all:",|"", # PATCH: disabled to allow source build for Pillow/pyjnius|' "$P4A_RECIPE_PY"
             if grep -q "PATCH: disabled" "$P4A_RECIPE_PY"; then
               echo "Patched recipe.py: --only-binary=:all: disabled"
             else
@@ -115,16 +115,18 @@ jobs:
             fi
           fi
 
-          # 3. Patch p4a freetype: 改 url 为 git+https 模式
-          #    p4a 认 git+https:// scheme 会 git clone --recursive 拉 submodule
-          #    savannah 502 + tarball 没 submodule,直接换 github 完整 git repo
+          # 3. Patch p4a freetype: url 改用 SourceForge 官方发布 tarball
+          # savannah.gnu.org 经常 502; github.com/freetype/freetype 只是代码镜像,
+          # 不带 Release 资产,而且裸 git 源码没有预生成的 configure 脚本,
+          # 直接 git clone 下来会导致 "./configure: not found"。
+          # SourceForge 上的包是官方 `make dist` 产出的发布 tarball,自带 configure,稳定可用。
           FT_FILE="$P4A_DIR/pythonforandroid/recipes/freetype/__init__.py"
           if [ -f "$FT_FILE" ]; then
-            # 改 url 为 git+https:// 模式
-            sed -i "s|    url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'  # noqa|    url = 'git+https://github.com/freetype/freetype.git'  # PATCH: was savannah, switched to git+https for submodule support|" "$FT_FILE"
-            # 改 version 为 git tag (VER-2-14-1)
-            sed -i "s|    version = '2.14.1'|    version = 'VER-2-14-1'|" "$FT_FILE"
-            echo "Patched freetype to use git+https URL:"
+            sed -i "s|url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz' # noqa|url = 'https://sourceforge.net/projects/freetype/files/freetype2/{version}/freetype-{version}.tar.gz/download' # PATCH: was savannah (502), switched to SourceForge mirror|" "$FT_FILE"
+            # 确保 version 是普通点号格式(不是 git tag 格式),因为现在走 tarball 下载模式
+            sed -i "s|version = 'VER-2-14-1'|version = '2.14.1'|" "$FT_FILE"
+            sed -i "s|version = '2.14.1'|version = '2.14.1'|" "$FT_FILE"
+            echo "Patched freetype to use SourceForge tarball:"
             grep -E "url =|version =" "$FT_FILE" | head -3
           fi
 
