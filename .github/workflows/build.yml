@@ -115,17 +115,17 @@ jobs:
             fi
           fi
 
-          # 3. Patch p4a freetype: 改用 git URL(代替 savannah tarball)
-          #    freetype 2.14.1 有 submodules (subprojects/dlg),tarball 下不下来。
-          #    用 git clone 可以带 submodule。我们用 github mirror。
+          # 3. Patch p4a freetype: 改 url 为 git+https 模式
+          #    p4a 认 git+https:// scheme 会 git clone --recursive 拉 submodule
+          #    savannah 502 + tarball 没 submodule,直接换 github 完整 git repo
           FT_FILE="$P4A_DIR/pythonforandroid/recipes/freetype/__init__.py"
           if [ -f "$FT_FILE" ]; then
-            # 注释 url 行(用 # 开头),加 git 行
-            sed -i "s|^    url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'  # noqa|    # PATCH: replaced url with git for submodule support\n    git = 'https://github.com/freetype/freetype.git'|" "$FT_FILE"
-            # 把 version 改成 git tag (VER-2-14-1 对应 2.14.1)
+            # 改 url 为 git+https:// 模式
+            sed -i "s|    url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'  # noqa|    url = 'git+https://github.com/freetype/freetype.git'  # PATCH: was savannah, switched to git+https for submodule support|" "$FT_FILE"
+            # 改 version 为 git tag (VER-2-14-1)
             sed -i "s|    version = '2.14.1'|    version = 'VER-2-14-1'|" "$FT_FILE"
-            echo "Patched freetype to use git URL:"
-            grep -E "url =|git =|version =" "$FT_FILE" | head -5
+            echo "Patched freetype to use git+https URL:"
+            grep -E "url =|version =" "$FT_FILE" | head -3
           fi
 
           # 4. 让 buildozer 失败时暴露真实错误
