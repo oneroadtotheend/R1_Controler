@@ -101,19 +101,14 @@ jobs:
           echo "Pre-cloning p4a to $P4A_DIR (master branch)..."
           git clone --depth 1 -b master https://github.com/kivy/python-for-android.git "$P4A_DIR"
 
-          # 2. Patch p4a recipe.py 去掉 --only-binary=:all: 限制
-          # 这个选项强制只装 wheel,而 Pillow/pyjnius 没有 android_21_arm wheel。
-          # 去掉后让 p4a 用源码编译。
-          P4A_RECIPE_PY="$P4A_DIR/pythonforandroid/recipe.py"
-          if [ -f "$P4A_RECIPE_PY" ]; then
-            # 把 "--only-binary=:all:" 替换成空字符串
-            sed -i 's|"--only-binary=:all:",|"", # PATCH: disabled to allow source build for Pillow/pyjnius|' "$P4A_RECIPE_PY"
-            if grep -q "PATCH: disabled" "$P4A_RECIPE_PY"; then
-              echo "Patched recipe.py: --only-binary=:all: disabled"
-            else
-              echo "WARN: recipe.py patch failed"
-            fi
-          fi
+          # 2. [已移除] 之前这里有一段 sed 补丁,把 recipe.py 里的
+          # "--only-binary=:all:", 替换成空字符串,想让 Pillow/pyjnius 走源码编译。
+          # 但这个补丁本身有 bug:替换成空字符串后,pip 收到一个空参数会报
+          # "Invalid requirement: ''",而且破坏了 p4a 内部"跳过 android 伪模块"
+          # 的逻辑,导致 pip 尝试安装不存在的 "android" 包。
+          # 实际上 pyjnius 和 Pillow 在 p4a 里都有自带的官方 recipe,
+          # 本来就是从源码用 NDK 交叉编译的,不走 pip/wheel,不需要这个补丁。
+          # 所以直接删掉这一步。
 
           # 3. Patch p4a freetype: url 改用 SourceForge 官方发布 tarball
           # savannah.gnu.org 经常 502; github.com/freetype/freetype 只是代码镜像,
