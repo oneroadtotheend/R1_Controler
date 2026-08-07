@@ -117,12 +117,21 @@ jobs:
           # SourceForge 上的包是官方 `make dist` 产出的发布 tarball,自带 configure,稳定可用。
           FT_FILE="$P4A_DIR/pythonforandroid/recipes/freetype/__init__.py"
           if [ -f "$FT_FILE" ]; then
-            sed -i "s|url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz' # noqa|url = 'https://sourceforge.net/projects/freetype/files/freetype2/{version}/freetype-{version}.tar.gz/download' # PATCH: was savannah (502), switched to SourceForge mirror|" "$FT_FILE"
+            # 用 .* 兜底行尾(注释/空格数量不一定和这里写的完全一致,之前吃过精确匹配的亏),
+            # 只精确匹配 URL 字符串本身
+            sed -i "s|url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'.*|url = 'https://sourceforge.net/projects/freetype/files/freetype2/{version}/freetype-{version}.tar.gz/download'  # PATCH: was savannah (502), switched to SourceForge mirror|" "$FT_FILE"
             # 确保 version 是普通点号格式(不是 git tag 格式),因为现在走 tarball 下载模式
             sed -i "s|version = 'VER-2-14-1'|version = '2.14.1'|" "$FT_FILE"
             sed -i "s|version = '2.14.1'|version = '2.14.1'|" "$FT_FILE"
             echo "Patched freetype to use SourceForge tarball:"
             grep -E "url =|version =" "$FT_FILE" | head -3
+            if grep -q "savannah.gnu.org" "$FT_FILE"; then
+              echo "FATAL: freetype url patch did not apply (still points to savannah.gnu.org)"
+              exit 1
+            fi
+          else
+            echo "FATAL: freetype recipe file not found at $FT_FILE"
+            exit 1
           fi
 
           # 4. 让 buildozer 失败时暴露真实错误
