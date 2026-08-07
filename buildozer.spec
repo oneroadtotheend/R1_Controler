@@ -7,6 +7,7 @@ package.domain = com.r1controller
 
 # 源码目录（项目根）
 source.dir = .
+source.exclude_dirs = .git,.github,build,.buildozer,bin,__pycache__,.venv,venv
 source.include_exts = py,png,jpg,kv,json,html,js,css,ttf,db,zip,txt
 source.include_patterns = app/*,modules/*,config/*
 
