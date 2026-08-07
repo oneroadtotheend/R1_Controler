@@ -1,177 +1,53 @@
-name: Build Android APK
+[app]
 
-on:
-  push:
-    branches: [main]
-    tags:
-      - 'v*'
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+# 应用名称与包名
+title = R1智能控制中心
+package.name = controller
+package.domain = com.r1controller
 
-jobs:
-  build:
-    runs-on: ubuntu-22.04
+# 源码目录（项目根）
+source.dir = .
+source.exclude_dirs = .git,.github,build,.buildozer,bin,__pycache__,.venv,venv
+source.include_exts = py,png,jpg,kv,json,html,js,css,ttf,db,zip,txt
+source.include_patterns = app/*,modules/*,config/*
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+# 版本号（对应 R1_controler_2.0.0）
+version = 2.0.0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+# 依赖（锁定纯Python版本，避免 pydantic v2 的 Rust 扩展在 p4a 无法编译）
+requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.2.1,pyjnius,fastapi==0.95.2,uvicorn==0.23.2,jinja2==3.1.2,pyyaml==6.0.1,requests==2.31.0,qrcode==7.4.2,pillow==10.1.0,pydantic==1.10.13
 
-      # p4a builds Python 3.11.13 from source. Install ALL system libs it needs.
-      # Missing any of these = silent build failure 30 minutes in.
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            openjdk-17-jdk \
-            ant \
-            autoconf \
-            automake \
-            libffi-dev \
-            libssl-dev \
-            zlib1g-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            libreadline-dev \
-            libsqlite3-dev \
-            libgdbm-dev \
-            libnss3-dev \
-            libbz2-dev \
-            liblzma-dev \
-            libtool \
-            patchelf \
-            unzip \
-            zip \
-            git
+# 横竖屏都支持
+orientation = portrait
+fullscreen = True
 
-      # Force fresh buildozer + p4a clone to pick up our patches.
-      # Cached p4a from previous runs is the unpatched upstream version, so we wipe it.
-      - name: Wipe cached buildozer
-        run: rm -rf ~/.buildozer build/android/platform
+# 入口
+android.entrypoint = main.py
 
-      # Force JDK 17 BEFORE setup-android (which would default to JDK 11).
-      # cmdline-tools v16+ requires JDK 17 or later.
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+# 权限：联网加载Web资源/外部CDN、录音(语音)、唤醒锁(防休眠)
+android.permissions = INTERNET,ACCESS_NETWORK_STATE,RECORD_AUDIO,WAKE_LOCK,READ_EXTERNAL_STORAGE,WRITE_EXTERNAL_STORAGE
 
-      - name: Download Android SDK
-        uses: android-actions/setup-android@v3
+# Android API 级别（R1 为老设备，min 21 兼容）
+android.targetapi = 31
+android.minapi = 21
+android.accept_sdk_license = True
+android.wakelock = True
 
-      - name: Set JAVA_HOME
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+# 架构：R1 (RK3229) 为 ARMv7 32位
+android.archs = armeabi-v7a
 
-      # P4A uses system freetype to avoid broken download URL
-      - name: Install system freetype
-        run: sudo apt-get install -y libfreetype6-dev
+# 允许明文(http)流量：WebView 需要加载本地 http://127.0.0.1 的 FastAPI 服务
+android.allow_cleartext_traffic = True
+android.private_storage = True
 
-      # Pin buildozer + cython to versions that work with p4a stable + Python 3.11.
-      - name: Install Buildozer + Cython
-        run: |
-          pip install --upgrade pip
-          pip install 'buildozer==1.5.0'
-          pip install 'cython>=0.29.1,<=3.0.12'
+# p4a 用 master 分支(stable 没有 --only-binary=:all: 限制,会直接装失败)
+p4a.branch = master
 
-      # Accept all Android SDK licenses non-interactively.
-      - name: Accept SDK licenses
-        run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+log_level = 2
+build_type = debug
 
-      - name: Build APK
-        run: |
-          # Use system freetype (avoid broken download URL)
-          export P4A_USE_SYSTEM_FREETYPE=1
-
-          # 1. 预 clone p4a 到 buildozer 实际使用的地方
-          # buildozer 默认在 <project>/build/android/platform/python-for-android/ 装 p4a
-          # buildozer 强制用 master 分支(--only-binary=:all: 在 master 才有)
-          P4A_DIR="build/android/platform/python-for-android"
-          mkdir -p "$(dirname "$P4A_DIR")"
-          # 先删掉(可能之前存在),buildozer 会自己 clone master
-          rm -rf "$P4A_DIR"
-          echo "Pre-cloning p4a to $P4A_DIR (master branch)..."
-          git clone --depth 1 -b master https://github.com/kivy/python-for-android.git "$P4A_DIR"
-
-          # 2. [已移除] 之前这里有一段 sed 补丁,把 recipe.py 里的
-          # "--only-binary=:all:", 替换成空字符串,想让 Pillow/pyjnius 走源码编译。
-          # 但这个补丁本身有 bug:替换成空字符串后,pip 收到一个空参数会报
-          # "Invalid requirement: ''",而且破坏了 p4a 内部"跳过 android 伪模块"
-          # 的逻辑,导致 pip 尝试安装不存在的 "android" 包。
-          # 实际上 pyjnius 和 Pillow 在 p4a 里都有自带的官方 recipe,
-          # 本来就是从源码用 NDK 交叉编译的,不走 pip/wheel,不需要这个补丁。
-          # 所以直接删掉这一步。
-
-          # 3. Patch p4a freetype: url 改用 SourceForge 官方发布 tarball
-          # savannah.gnu.org 经常 502; github.com/freetype/freetype 只是代码镜像,
-          # 不带 Release 资产,而且裸 git 源码没有预生成的 configure 脚本,
-          # 直接 git clone 下来会导致 "./configure: not found"。
-          # SourceForge 上的包是官方 `make dist` 产出的发布 tarball,自带 configure,稳定可用。
-          FT_FILE="$P4A_DIR/pythonforandroid/recipes/freetype/__init__.py"
-          if [ -f "$FT_FILE" ]; then
-            # 用 .* 兜底行尾(注释/空格数量不一定和这里写的完全一致,之前吃过精确匹配的亏),
-            # 只精确匹配 URL 字符串本身
-            sed -i "s|url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'.*|url = 'https://sourceforge.net/projects/freetype/files/freetype2/{version}/freetype-{version}.tar.gz/download'  # PATCH: was savannah (502), switched to SourceForge mirror|" "$FT_FILE"
-            # 确保 version 是普通点号格式(不是 git tag 格式),因为现在走 tarball 下载模式
-            sed -i "s|version = 'VER-2-14-1'|version = '2.14.1'|" "$FT_FILE"
-            sed -i "s|version = '2.14.1'|version = '2.14.1'|" "$FT_FILE"
-            echo "Patched freetype to use SourceForge tarball:"
-            grep -E "url =|version =" "$FT_FILE" | head -3
-            if grep -q "savannah.gnu.org" "$FT_FILE"; then
-              echo "FATAL: freetype url patch did not apply (still points to savannah.gnu.org)"
-              exit 1
-            fi
-          else
-            echo "FATAL: freetype recipe file not found at $FT_FILE"
-            exit 1
-          fi
-
-          # 4. 让 buildozer 失败时暴露真实错误
-          set -o pipefail
-
-          buildozer android debug 2>&1 | tee /tmp/build.log
-          RC=$?
-          if [ $RC -ne 0 ]; then
-            echo "===== buildozer exited $RC; last 80 lines ====="
-            tail -80 /tmp/build.log
-            exit $RC
-          fi
-        env:
-          P4A_DEBUG: 0
-
-      - name: Show build log on failure
-        if: failure()
-        run: |
-          echo "===== last 100 lines of build log ====="
-          tail -100 /tmp/build.log
-          echo "===== error grep ====="
-          grep -E "ERROR|Exception|Error:" /tmp/build.log | head -30 || true
-
-      - name: Upload APK
-        if: success() || failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: r1-controller-apk-${{ github.sha }}
-          path: bin/*.apk
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload APK to Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: bin/*.apk
-          body: |
-            R1 Controller Android APK
-
-            Download and install on your R1 device.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+[buildozer]
+log_level = 2
+warn_on_root = 0
+build_dir = ./build
+bin_dir = ./bin
