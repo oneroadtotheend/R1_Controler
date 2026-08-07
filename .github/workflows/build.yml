@@ -93,14 +93,13 @@ jobs:
 
           # 1. 预 clone p4a 到 buildozer 实际使用的地方
           #    buildozer 默认在 <project>/build/android/platform/python-for-android/ 装 p4a
+          #    buildozer 强制用 master 分支(--only-binary=:all: 在 master 才有)
           P4A_DIR="build/android/platform/python-for-android"
           mkdir -p "$(dirname "$P4A_DIR")"
-          if [ ! -d "$P4A_DIR" ]; then
-            echo "Pre-cloning p4a to $P4A_DIR..."
-            git clone --depth 1 -b stable https://github.com/kivy/python-for-android.git "$P4A_DIR"
-          else
-            echo "p4a already cloned at $P4A_DIR"
-          fi
+          # 先删掉(可能之前存在),buildozer 会自己 clone master
+          rm -rf "$P4A_DIR"
+          echo "Pre-cloning p4a to $P4A_DIR (master branch)..."
+          git clone --depth 1 -b master https://github.com/kivy/python-for-android.git "$P4A_DIR"
 
           # 2. Patch p4a recipe.py 去掉 --only-binary=:all: 限制
           #    这个选项强制只装 wheel,而 Pillow/pyjnius 没有 android_21_arm wheel。

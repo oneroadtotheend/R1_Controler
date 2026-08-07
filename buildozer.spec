@@ -39,6 +39,9 @@ android.archs = armeabi-v7a
 android.allow_cleartext_traffic = True
 android.private_storage = True
 
+# p4a 用 master 分支(stable 没有 --only-binary=:all: 限制,会直接装失败)
+p4a.branch = master
+
 log_level = 2
 build_type = debug
 
@@ -47,4 +50,3 @@ log_level = 2
 warn_on_root = 0
 build_dir = ./build
 bin_dir = ./bin
-p4a_branch = stable
