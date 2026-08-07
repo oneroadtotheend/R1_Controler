@@ -115,13 +115,17 @@ jobs:
             fi
           fi
 
-          # 3. Patch p4a freetype URL: savannah 502 → gitlab mirror
+          # 3. Patch p4a freetype: 改用 git URL(代替 savannah tarball)
+          #    freetype 2.14.1 有 submodules (subprojects/dlg),tarball 下不下来。
+          #    用 git clone 可以带 submodule。我们用 github mirror。
           FT_FILE="$P4A_DIR/pythonforandroid/recipes/freetype/__init__.py"
           if [ -f "$FT_FILE" ]; then
-            FT_VER=$(grep "version =" "$FT_FILE" | head -1 | sed "s/.*'\(.*\)'.*/\1/")
-            sed -i "s|https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz|https://gitlab.freedesktop.org/freetype/freetype/-/archive/VER-${FT_VER//./-}/freetype-VER-${FT_VER//./-}.tar.gz|" "$FT_FILE"
-            echo "Patched freetype URL:"
-            grep "url =" "$FT_FILE"
+            # 注释 url 行(用 # 开头),加 git 行
+            sed -i "s|^    url = 'https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz'  # noqa|    # PATCH: replaced url with git for submodule support\n    git = 'https://github.com/freetype/freetype.git'|" "$FT_FILE"
+            # 把 version 改成 git tag (VER-2-14-1 对应 2.14.1)
+            sed -i "s|    version = '2.14.1'|    version = 'VER-2-14-1'|" "$FT_FILE"
+            echo "Patched freetype to use git URL:"
+            grep -E "url =|git =|version =" "$FT_FILE" | head -5
           fi
 
           # 4. 让 buildozer 失败时暴露真实错误
